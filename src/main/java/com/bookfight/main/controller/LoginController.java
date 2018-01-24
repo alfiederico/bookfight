@@ -72,25 +72,29 @@ public class LoginController {
         if (bindingResult.hasErrors()) {
             modelAndView.setViewName("registration");
         } else {
-            userService.registerNewUserAccount(user);
-            modelAndView.addObject("successMessage", "You registered successfully. We will send you a confirmation message to your email account.");
+            try {
+                userService.registerNewUserAccount(user);
+                modelAndView.addObject("successMessage", "You registered successfully. We will send you a confirmation message to your email account.");
 
-            String token = UUID.randomUUID().toString();
-            userService.createVerificationToken(user, token);
+                String token = UUID.randomUUID().toString();
+                userService.createVerificationToken(user, token);
 
-            String recipientAddress = user.getEmail();
-            String subject = "Registration Confirmation";
-            String confirmationUrl = "http://localhost:8089" + "/regitrationConfirm.html?token=" + token;
-            String message = "You registered successfully. We will send you a confirmation message to your email account.";
+                String recipientAddress = user.getEmail();
+                String subject = "Registration Confirmation";
+                String confirmationUrl = "http://localhost:8089" + "/registrationConfirm?token=" + token;
+                String message = "You registered successfully. We will send you a confirmation message to your email account.";
 
-            SimpleMailMessage email = new SimpleMailMessage();
-            email.setTo(recipientAddress);
-            email.setSubject(subject);
-            email.setText(message + " rn" + "http://localhost:8089" + confirmationUrl);
-            mailSender.send(email);
+                SimpleMailMessage email = new SimpleMailMessage();
+                email.setTo(recipientAddress);
+                email.setSubject(subject);
+                email.setText(message + " " + confirmationUrl);
+                mailSender.send(email);
 
-            modelAndView.addObject("user", new User());
-            modelAndView.setViewName("registration");
+                modelAndView.addObject("user", new User());
+                modelAndView.setViewName("registration");
+            } catch (Exception ex) {
+                System.out.println(ex.getMessage());
+            }
 
         }
         return modelAndView;
@@ -107,7 +111,7 @@ public class LoginController {
         return modelAndView;
     }
 
-    @RequestMapping(value = "/regitrationConfirm", method = RequestMethod.GET)
+    @RequestMapping(value = "/registrationConfirm", method = RequestMethod.GET)
     public String confirmRegistration(WebRequest request, Model model, @RequestParam("token") String token) {
 
         Locale locale = request.getLocale();

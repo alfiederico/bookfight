@@ -55,10 +55,11 @@ public class MailConfiguration {
         mailProperties.put("mail.smtp.starttls.enable", starttls);
         mailProperties.put("mail.smtp.starttls.required", startlls_required);
         mailProperties.put("mail.smtp.socketFactory.port", socketPort);
-       mailProperties.put("mail.smtp.debug", debug);
+        mailProperties.put("mail.smtp.debug", debug);
         mailProperties.put("mail.smtp.socketFactory.class", "javax.net.ssl.SSLSocketFactory");
-       mailProperties.put("mail.smtp.socketFactory.fallback", fallback);
-       
+        mailProperties.put("mail.smtp.socketFactory.fallback", fallback);
+        mailProperties.put("mail.smtp.ssl.trust", host);
+        
 
         mailSender.setJavaMailProperties(mailProperties);
         mailSender.setHost(host);
@@ -66,6 +67,7 @@ public class MailConfiguration {
         mailSender.setProtocol(protocol);
         mailSender.setUsername(username);
         mailSender.setPassword(password);
+        
         return mailSender;
     }
 }
