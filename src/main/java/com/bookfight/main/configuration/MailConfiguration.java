@@ -6,12 +6,12 @@
 package com.bookfight.main.configuration;
 
 import java.util.Properties;
+import javax.mail.PasswordAuthentication;
+import javax.mail.Session;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.JavaMailSenderImpl;
 
 /**
  *
@@ -47,27 +47,25 @@ public class MailConfiguration {
     private String password;
 
     @Bean
-    public JavaMailSender javaMailSender() {
-        JavaMailSenderImpl mailSender = new JavaMailSenderImpl();
+    public javax.mail.Session EmailSession() {
+        Properties props = new Properties();
+        props.put("mail.smtp.auth", auth);
+        props.put("mail.smtp.starttls.enable", starttls);
+        props.put("mail.smtp.starttls.required", startlls_required);
+        props.put("mail.smtp.socketFactory.port", socketPort);
+        props.put("mail.smtp.debug", debug);
+        props.put("mail.smtp.socketFactory.class", "javax.net.ssl.SSLSocketFactory");
+        props.put("mail.smtp.socketFactory.fallback", fallback);
+        props.put("mail.smtp.host", host);
+        props.put("mail.smtp.port", port);
+        props.put("mail.smtp.ssl.trust", host);
 
-        Properties mailProperties = new Properties();
-        mailProperties.put("mail.smtp.auth", auth);
-        mailProperties.put("mail.smtp.starttls.enable", starttls);
-        mailProperties.put("mail.smtp.starttls.required", startlls_required);
-        mailProperties.put("mail.smtp.socketFactory.port", socketPort);
-        mailProperties.put("mail.smtp.debug", debug);
-        mailProperties.put("mail.smtp.socketFactory.class", "javax.net.ssl.SSLSocketFactory");
-        mailProperties.put("mail.smtp.socketFactory.fallback", fallback);
-        mailProperties.put("mail.smtp.ssl.trust", host);
-        
-
-        mailSender.setJavaMailProperties(mailProperties);
-        mailSender.setHost(host);
-        mailSender.setPort(port);
-        mailSender.setProtocol(protocol);
-        mailSender.setUsername(username);
-        mailSender.setPassword(password);
-        
-        return mailSender;
+        return Session.getInstance(props,
+                new javax.mail.Authenticator() {
+            protected PasswordAuthentication getPasswordAuthentication() {
+                return new PasswordAuthentication(username, password);
+            }
+        });
     }
+
 }

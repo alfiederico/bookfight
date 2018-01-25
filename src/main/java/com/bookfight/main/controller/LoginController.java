@@ -15,11 +15,14 @@ import com.bookfight.main.service.UserService;
 import java.util.Calendar;
 import java.util.Locale;
 import java.util.UUID;
+import javax.mail.Message;
+import javax.mail.Session;
+import javax.mail.Transport;
+import javax.mail.internet.InternetAddress;
+import javax.mail.internet.MimeMessage;
 import javax.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.MessageSource;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
@@ -41,7 +44,7 @@ public class LoginController {
     private MessageSource messages;
 
     @Autowired
-    private JavaMailSender mailSender;
+    private Session emailSession;
 
     @RequestMapping(value = {"/", "/login"}, method = RequestMethod.GET)
     public ModelAndView login() {
@@ -64,31 +67,59 @@ public class LoginController {
 
         ModelAndView modelAndView = new ModelAndView();
         User userExists = userService.findUserByEmail(user.getEmail());
+        boolean bTokenExpired = false;
         if (userExists != null) {
-            bindingResult
-                    .rejectValue("email", "error.user",
-                            "There is already a user registered with the email provided");
+            if (userExists.getActive() == true) {
+                bindingResult
+                        .rejectValue("email", "error.user",
+                                "There is already a user registered with the email provided");
+            } else {
+                VerificationToken verificationToken = userService.getVerificationToken(userExists);
+                Calendar cal = Calendar.getInstance();
+                if ((verificationToken.getExpiryDate().getTime() - cal.getTime().getTime()) > 0) {
+                    bindingResult
+                            .rejectValue("email", "error.user",
+                                    "There is already a user registered with the email provided. Please check confirmation message sent to this email account.");
+                } else {
+                    bTokenExpired = true;
+                }
+
+            }
+
         }
         if (bindingResult.hasErrors()) {
             modelAndView.setViewName("registration");
         } else {
             try {
-                userService.registerNewUserAccount(user);
+                String token = UUID.randomUUID().toString();
+                if (bTokenExpired == true) {
+                    userExists.setName(user.getName());
+                    userExists.setLastName(user.getLastName());
+                    userExists.setEmail(user.getEmail());
+                    userExists.setPassword(user.getPassword());
+                    userService.saveUser(userExists);
+                    userService.createVerificationToken(userExists, token);
+                } else {
+                    userService.registerNewUserAccount(user);
+                    userService.createVerificationToken(user, token);
+                }
                 modelAndView.addObject("successMessage", "You registered successfully. We will send you a confirmation message to your email account.");
 
-                String token = UUID.randomUUID().toString();
-                userService.createVerificationToken(user, token);
-
                 String recipientAddress = user.getEmail();
-                String subject = "Registration Confirmation";
+                String subject = "BookFight Registration: Email Confirmation";
                 String confirmationUrl = "http://localhost:8089" + "/registrationConfirm?token=" + token;
-                String message = "You registered successfully. We will send you a confirmation message to your email account.";
 
-                SimpleMailMessage email = new SimpleMailMessage();
-                email.setTo(recipientAddress);
-                email.setSubject(subject);
-                email.setText(message + " " + confirmationUrl);
-                mailSender.send(email);
+                Message message = new MimeMessage(emailSession);
+                message.setFrom(new InternetAddress("developer@alfiederico.com", "BookFight"));
+                message.setRecipients(Message.RecipientType.TO,
+                        InternetAddress.parse(recipientAddress));
+                message.setSubject(subject);
+
+                String content = "To complete and confirm your registration for BookFight, you’ll need to verify your email address. To do so, please click the link below: " + "\n\n" + confirmationUrl + "\n\n\n";
+                content += "Best regards, \nalfie federico";
+                message.setText(content);
+
+                Transport.send(message);
 
                 modelAndView.addObject("user", new User());
                 modelAndView.setViewName("registration");
@@ -130,10 +161,14 @@ public class LoginController {
             model.addAttribute("message", messageValue);
             return "redirect:/badUser.html";
         }
+        if (user.getActive() == true) {
+            return "redirect:/login";
+        } else {
+            user.setActive(true);
+            userService.saveUser(user);
+        }
 
-        user.setActive(true);
-        userService.saveUser(user);
-        return "redirect:/login.html?lang=" + request.getLocale().getLanguage();
+        return "redirect:/login";
     }
 
 }

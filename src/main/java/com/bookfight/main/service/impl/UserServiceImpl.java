@@ -72,4 +72,9 @@ public class UserServiceImpl implements UserService {
         return tokenRepository.findByToken(VerificationToken);
     }
 
+    @Override
+    public VerificationToken getVerificationToken(User user) {
+       return tokenRepository.findByUser(user);
+    }
+
 }
